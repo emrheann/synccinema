@@ -21,6 +21,9 @@ interface VideoControlsProps {
   // Audio Track Props
   audioTracks: AudioTrack[];
   onSelectAudioTrack: (index: number) => void;
+  
+  // Visibility Prop
+  visible?: boolean;
 }
 
 const formatTime = (seconds: number) => {
@@ -50,7 +53,8 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
   onUploadSubtitle,
   onRemoveSubtitle,
   audioTracks,
-  onSelectAudioTrack
+  onSelectAudioTrack,
+  visible = true
 }) => {
   const [showSettings, setShowSettings] = useState(false);
 
@@ -61,7 +65,7 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
   };
 
   return (
-    <div className="controls absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-12 pb-4 px-6 transition-opacity duration-300 opacity-0 group-hover:opacity-100 z-30">
+    <div className={`controls absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-12 pb-4 px-6 transition-opacity duration-500 z-30 ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
       
       {/* Progress Bar Container */}
       <div className="relative group/slider w-full h-4 flex items-center cursor-pointer mb-2">

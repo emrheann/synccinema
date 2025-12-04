@@ -35,6 +35,10 @@ const App: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showOverlayChatInput, setShowOverlayChatInput] = useState(false);
   
+  // UI Visibility State (Idle Timer)
+  const [isUserActive, setIsUserActive] = useState(true);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   // Audio Track State
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
 
@@ -51,6 +55,47 @@ const App: React.FC = () => {
   const videoRef = useRef<ExtendedHTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isRemoteUpdate = useRef(false); 
+
+  // --- Idle Timer Logic ---
+  const resetIdleTimer = () => {
+      setIsUserActive(true);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      
+      // Only hide UI if input is NOT open
+      if (!showOverlayChatInput) {
+          idleTimerRef.current = setTimeout(() => {
+              setIsUserActive(false);
+          }, 3000); // 3 seconds idle time
+      }
+  };
+
+  useEffect(() => {
+      // If input is open, keep UI active
+      if (showOverlayChatInput) {
+          setIsUserActive(true);
+          if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      } else {
+          resetIdleTimer();
+      }
+  }, [showOverlayChatInput]);
+
+  useEffect(() => {
+      const handleUserActivity = () => resetIdleTimer();
+
+      window.addEventListener('mousemove', handleUserActivity);
+      window.addEventListener('mousedown', handleUserActivity);
+      window.addEventListener('keydown', handleUserActivity);
+      window.addEventListener('touchstart', handleUserActivity);
+
+      return () => {
+          window.removeEventListener('mousemove', handleUserActivity);
+          window.removeEventListener('mousedown', handleUserActivity);
+          window.removeEventListener('keydown', handleUserActivity);
+          window.removeEventListener('touchstart', handleUserActivity);
+          if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      };
+  }, [showOverlayChatInput]);
+  // ------------------------
 
   useEffect(() => {
     let currentPeer: any = null;
@@ -718,6 +763,7 @@ const App: React.FC = () => {
                       onRemoveSubtitle={handleRemoveSubtitle}
                       audioTracks={audioTracks}
                       onSelectAudioTrack={handleSelectAudioTrack}
+                      visible={isUserActive}
                   />
               </div>
               
@@ -731,6 +777,7 @@ const App: React.FC = () => {
                   onInputBlur={() => setShowOverlayChatInput(false)}
                   myProfile={myProfile}
                   peerProfile={peerProfile}
+                  isIdle={!isUserActive}
                 />
               )}
             </>
@@ -835,6 +882,7 @@ const App: React.FC = () => {
                     onAskAI={handleAskAI}
                     myProfile={myProfile}
                     peerProfile={peerProfile}
+                    isIdle={false} // Sidebar chat always active
                 />
             </div>
         </div>
