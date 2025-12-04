@@ -1,0 +1,5 @@
+{
+  "name": "SyncCinema - Birlikte İzle",
+  "description": "Yerel video dosyalarıyla senkronize film izleme deneyimi. P2P bağlantı ve Gemini AI sahne analizi içerir.",
+  "requestFramePermissions": []
+}
