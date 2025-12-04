@@ -5,8 +5,10 @@ interface VideoControlsProps {
   isPlaying: boolean;
   currentTime: number;
   duration: number;
+  volume: number;
   onPlayPause: () => void;
   onSeek: (time: number) => void;
+  onVolumeChange: (volume: number) => void;
   onAnalyze: () => void;
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
@@ -37,8 +39,10 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
   isPlaying,
   currentTime,
   duration,
+  volume,
   onPlayPause,
   onSeek,
+  onVolumeChange,
   onAnalyze,
   onToggleFullscreen,
   isFullscreen,
@@ -49,6 +53,12 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
   onSelectAudioTrack
 }) => {
   const [showSettings, setShowSettings] = useState(false);
+
+  const getVolumeIcon = () => {
+      if (volume === 0) return 'volume_off';
+      if (volume < 0.5) return 'volume_down';
+      return 'volume_up';
+  };
 
   return (
     <div className="controls absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-12 pb-4 px-6 transition-opacity duration-300 opacity-0 group-hover:opacity-100 z-30">
@@ -75,17 +85,39 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
       </div>
 
       <div className="flex items-center justify-between text-zinc-300">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <button 
             onClick={onPlayPause}
             className="hover:text-white transition-colors hover:scale-110 transform duration-200"
+            title="Oynat/Durdur (Space)"
           >
             <span className="material-icons text-4xl">
               {isPlaying ? 'pause_circle_filled' : 'play_circle_filled'}
             </span>
           </button>
 
-          <span className="text-sm font-mono text-zinc-400 tracking-wider">
+          {/* Volume Control */}
+          <div className="group/vol flex items-center gap-2">
+             <button 
+               onClick={() => onVolumeChange(volume === 0 ? 1 : 0)}
+               className="hover:text-white transition-colors w-8 h-8 flex items-center justify-center"
+             >
+                 <span className="material-icons text-xl">{getVolumeIcon()}</span>
+             </button>
+             <div className="w-0 overflow-hidden group-hover/vol:w-24 transition-all duration-300 flex items-center">
+                 <input 
+                    type="range" 
+                    min={0} 
+                    max={1} 
+                    step={0.05}
+                    value={volume}
+                    onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                    className="w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+                 />
+             </div>
+          </div>
+
+          <span className="text-sm font-mono text-zinc-400 tracking-wider select-none">
             {formatTime(currentTime)} <span className="text-zinc-600 mx-1">/</span> {formatTime(duration)}
           </span>
         </div>

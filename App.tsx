@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [notification, setNotification] = useState<string | null>(null);
   const [showAnalysis, setShowAnalysis] = useState<string | null>(null);
@@ -129,9 +130,56 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Keyboard Shortcuts Handler
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isFullscreen && e.key === 'Enter') {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      // Ignore global shortcuts if user is typing in input or textarea
+      if (activeTag === 'input' || activeTag === 'textarea') {
+          return;
+      }
+
+      // Space: Play/Pause
+      if (e.code === 'Space') {
+          e.preventDefault();
+          if (videoRef.current) {
+              if (videoRef.current.paused) {
+                  onPlay();
+                  videoRef.current.play();
+              } else {
+                  onPause();
+                  videoRef.current.pause();
+              }
+          }
+      } 
+      // Arrow Left: Backward 5s
+      else if (e.code === 'ArrowLeft') {
+          e.preventDefault();
+          if (videoRef.current) {
+              const newTime = Math.max(0, videoRef.current.currentTime - 5);
+              handleManualSeek(newTime);
+          }
+      }
+      // Arrow Right: Forward 5s
+      else if (e.code === 'ArrowRight') {
+          e.preventDefault();
+          if (videoRef.current) {
+              const newTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 5);
+              handleManualSeek(newTime);
+          }
+      }
+      // Arrow Up: Volume Up
+      else if (e.code === 'ArrowUp') {
+          e.preventDefault();
+          handleVolumeChange(Math.min(1, volume + 0.1));
+      }
+      // Arrow Down: Volume Down
+      else if (e.code === 'ArrowDown') {
+          e.preventDefault();
+          handleVolumeChange(Math.max(0, volume - 0.1));
+      }
+      // Enter: Toggle Overlay Chat Input (handled separately inside logic if needed, but here mainly for fullscreen)
+      else if (isFullscreen && e.key === 'Enter') {
         if (!showOverlayChatInput) {
            e.preventDefault(); 
            setShowOverlayChatInput(true);
@@ -139,9 +187,9 @@ const App: React.FC = () => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen, showOverlayChatInput]);
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [volume, isFullscreen, showOverlayChatInput]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -450,7 +498,20 @@ const App: React.FC = () => {
           isRemoteUpdate.current = false; 
           videoRef.current.currentTime = time;
           setCurrentTime(time);
+          
+          // If paused, just sync the frame, if playing, it will continue
+          // We trigger sync event manually here because handleManualSeek updates current time
+          // but we want to ensure the specific logic for manual seeking (e.g. arrow keys) works
+          sendSyncEvent(SyncEventType.SEEK, time);
       }
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+      const v = Math.max(0, Math.min(1, newVol));
+      if (videoRef.current) {
+          videoRef.current.volume = v;
+      }
+      setVolume(v);
   };
 
   const handleForceSync = () => {
@@ -642,8 +703,10 @@ const App: React.FC = () => {
                       isPlaying={isPlaying}
                       currentTime={currentTime}
                       duration={duration}
+                      volume={volume}
                       onPlayPause={() => isPlaying ? videoRef.current?.pause() : videoRef.current?.play()}
                       onSeek={handleManualSeek}
+                      onVolumeChange={handleVolumeChange}
                       onAnalyze={handleAnalyzeScene}
                       onToggleFullscreen={toggleFullscreen}
                       isFullscreen={isFullscreen}
