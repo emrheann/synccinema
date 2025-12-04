@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { ChatMessage, UserProfile } from '../types';
 
@@ -33,6 +32,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
+  // Auto-hide State (Idle)
+  const [isIdle, setIsIdle] = useState(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Use useLayoutEffect for immediate scrolling after render
   useLayoutEffect(() => {
     if (messagesEndRef.current) {
@@ -48,6 +51,35 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   }, [isInputVisible]);
 
+  // --- Auto-Hide Logic ---
+  const resetIdleTimer = () => {
+      setIsIdle(false);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      
+      // Only start fade timer if input is NOT visible
+      if (!isInputVisible && !isDragging.current) {
+          idleTimerRef.current = setTimeout(() => {
+              setIsIdle(true);
+          }, 4000); // 4 seconds delay
+      }
+  };
+
+  // Reset timer on new messages
+  useEffect(() => {
+      resetIdleTimer();
+  }, [messages]);
+
+  // Manage timer based on input visibility
+  useEffect(() => {
+      if (isInputVisible) {
+          setIsIdle(false);
+          if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      } else {
+          resetIdleTimer();
+      }
+  }, [isInputVisible]);
+  // -----------------------
+
   // Drag Event Handlers
   useEffect(() => {
       const handleMouseMove = (e: MouseEvent) => {
@@ -62,6 +94,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       const handleMouseUp = () => {
           isDragging.current = false;
           document.body.style.userSelect = '';
+          resetIdleTimer(); // Restart timer after drag release
       };
 
       if (variant === 'overlay') {
@@ -73,14 +106,15 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           window.removeEventListener('mousemove', handleMouseMove);
           window.removeEventListener('mouseup', handleMouseUp);
       };
-  }, [variant]);
+  }, [variant, isInputVisible]); // Re-bind if input visibility changes to ensure timer logic works
 
   const handleMouseDown = (e: React.MouseEvent) => {
       // Prevent dragging if clicking inside the input field to allow typing/selection
       if ((e.target as HTMLElement).tagName === 'INPUT') {
           return;
       }
-
+      
+      resetIdleTimer(); // Wake up on click
       isDragging.current = true;
       dragOffset.current = {
           x: e.clientX - position.x,
@@ -127,7 +161,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       <div 
         style={{ left: position.x, top: position.y }} 
         onMouseDown={handleMouseDown}
-        className="fixed z-50 group flex flex-col items-start cursor-move"
+        onMouseEnter={resetIdleTimer}
+        onMouseMove={resetIdleTimer}
+        className={`fixed z-50 group flex flex-col items-start cursor-move transition-opacity duration-700 ${isIdle && !isInputVisible ? 'opacity-0' : 'opacity-100'}`}
       >
         {/* Message Container - Grows Upwards from Anchor */}
         <div className="absolute bottom-0 left-0 w-96 max-w-[80vw] pointer-events-none flex flex-col justify-end">
